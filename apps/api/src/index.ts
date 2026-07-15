@@ -1,11 +1,15 @@
-import 'dotenv/config';
+import { bootstrapEnv } from './env.js';
 import type { TranscriptPayload } from '@repsignal/schema';
 import { createApp, type ExtractFn } from './app.js';
 import { createInMemoryStore } from './store.js';
 import { extractScorecard } from './coaching/extractor.js';
 import { createAnthropicCaller } from './coaching/anthropicClient.js';
+import { resolvePort } from './config.js';
 
-const PORT = Number(process.env.PORT ?? 3000);
+// Load the repo-root .env before reading any environment variable.
+bootstrapEnv();
+
+const PORT = resolvePort();
 const apiKey = process.env.ANTHROPIC_API_KEY;
 
 function buildExtract(): ExtractFn {

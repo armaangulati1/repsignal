@@ -176,7 +176,7 @@ Expected: no output and exit code 0.
 npm test
 ```
 
-Expected: Vitest prints `Test Files 4 passed` and `Tests 29 passed`.
+Expected: Vitest prints `Test Files 5 passed` and `Tests 35 passed`.
 
 ### 5. Add your API key (only needed for the live steps below)
 
@@ -192,13 +192,13 @@ Then open `.env` in an editor and set `ANTHROPIC_API_KEY` to your real key.
 npm run dev:api
 ```
 
-Expected: `[repsignal] api listening on http://localhost:3000`. Leave this
+Expected: `[repsignal] api listening on http://localhost:8787`. Leave this
 window running.
 
 ### 7. In a second Terminal window, check health
 
 ```
-curl -s http://localhost:3000/health
+curl -s http://localhost:8787/health
 ```
 
 Expected: `{"status":"ok","storedScorecards":0}`.
@@ -206,7 +206,7 @@ Expected: `{"status":"ok","storedScorecards":0}`.
 ### 8. Send a sample transcript through the webhook
 
 ```
-curl -s -X POST http://localhost:3000/webhooks/transcripts -H "Content-Type: application/json" -d '{"callId":"demo-1","repName":"Dana","prospectName":"Priya","durationSeconds":600,"source":"zoom","transcript":[{"speaker":"rep","text":"How does your team review call quality today?"},{"speaker":"prospect","text":"Managers leave notes in a spreadsheet that nobody reads."},{"speaker":"rep","text":"Would a working session next Tuesday help?"},{"speaker":"prospect","text":"Yes, Tuesday at 10 works."}]}'
+curl -s -X POST http://localhost:8787/webhooks/transcripts -H "Content-Type: application/json" -d '{"callId":"demo-1","repName":"Dana","prospectName":"Priya","durationSeconds":600,"source":"zoom","transcript":[{"speaker":"rep","text":"How does your team review call quality today?"},{"speaker":"prospect","text":"Managers leave notes in a spreadsheet that nobody reads."},{"speaker":"rep","text":"Would a working session next Tuesday help?"},{"speaker":"prospect","text":"Yes, Tuesday at 10 works."}]}'
 ```
 
 Expected: a JSON scorecard record with an `id` and a `scorecard` object.

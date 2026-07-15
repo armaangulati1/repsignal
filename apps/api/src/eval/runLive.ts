@@ -1,6 +1,9 @@
-import 'dotenv/config';
+import { bootstrapEnv } from '../env.js';
 import { createAnthropicCaller } from '../coaching/anthropicClient.js';
 import { formatEvalReport, runEvalHarness } from './harness.js';
+
+// Load the repo-root .env before reading ANTHROPIC_API_KEY, regardless of cwd.
+bootstrapEnv();
 
 /**
  * Live eval entry point. This is the ONLY code path that calls the real
