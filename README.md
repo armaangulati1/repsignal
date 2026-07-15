@@ -136,12 +136,64 @@ passing). The offline number is a harness sanity check, **not** a model
 measurement.
 
 The real model-vs-golden number is produced by running the live eval with a real
-API key (see the RUNBOOK). It is intentionally left to a keyed human run and is
-not baked into this README as a claim until it has actually been produced.
+API key (see the RUNBOOK).
+
+### Live eval result
+
+A representative live run scored **77/84 field checks on its self-authored
+synthetic 14-transcript eval set** (9 of the 14 transcripts scored 6/6; the other
+5 were partial).
+
+Honest caveats:
+
+- The LLM produces different outputs run to run, so **77/84 is representative, not
+  a fixed number**. A re-run may land a point or two either way.
+- All 14 transcripts are synthetic and self-authored, all golden labels are
+  self-scored, and this is not a real integration. The number measures agreement
+  with one author's judgment on invented calls, not real-world accuracy.
+- Two recurring miss types account for most of the gap, and both are known
+  limitations rather than scored-away edge cases:
+  1. **`talkListenRatio` estimation.** On a few calls the model's estimated
+     talk/listen ratio landed just outside the +/- 0.10 tolerance. The model
+     approximates the ratio from the transcript rather than counting words
+     exactly.
+  2. **Conservative risk over-flagging.** On a few calls the model raised a
+     `riskFlags` entry where the golden label had none. It errs toward flagging
+     risk, which trips the `riskFlags.presence` agreement check.
+
+The golden labels were **not** adjusted to inflate the score. The framing rule
+above still holds: the number never appears bare, always with the
+"on its self-authored synthetic 14-transcript eval set" qualifier.
+
+### What the live run surfaced
+
+The first live run was useful precisely because it broke. It exposed three real
+issues, each since fixed:
+
+1. **`dotenv` loaded from the wrong directory.** The client read `.env` from the
+   workspace (app) directory instead of the monorepo root, so the API key was not
+   picked up. Env loading now resolves to the repo root.
+2. **Default-port collision.** The API's default port clashed with other local
+   dev servers, so the eval hit the wrong process. The default moved to `8787`.
+3. **Node 24 `undici` "Premature close".** On long generations, Node 24's bundled
+   `undici` dropped the response mid-stream. Fixed by pinning Node 20 (see
+   Requirements) and switching to the streaming path with retries in the
+   Anthropic client.
 
 ---
 
 ## RUNBOOK
+
+### Requirements
+
+Run this project on **Node 20 LTS** (the repo pins it via `.nvmrc` and an
+`engines` field). If you use `nvm`, run `nvm use` from the repo root. Node 20 is
+required because the live eval surfaced a real failure on Node 24: its bundled
+`undici` HTTP client drops long-lived API responses with a `Premature close`
+error partway through streaming a long model generation. Pinning Node 20 (plus
+the streaming path and retries in the Anthropic client) is what makes the live
+eval reproducible. The offline test suite passes on any recent Node; the pin
+matters for the keyed live steps.
 
 Run these in a Terminal window, from the repository root, in order. Each command
 is in its own block. Copy one block at a time.
