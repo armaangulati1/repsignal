@@ -310,8 +310,9 @@ Expected: a per-transcript report ending with two summary lines of the form
 followed by
 `talkListenRatio: 14/14 deterministic, exact by construction (computed in code from the transcript, not judged by the model).`
 
-The latest recorded run is **66/70** (see Live eval result). Update that section
-if a fresh re-run lands a different LLM-judged number.
+The latest recorded run is **66/70 LLM-judged field checks on its self-authored
+synthetic 14-transcript eval set** (see Live eval result). Update that section if
+a fresh re-run lands a different LLM-judged number.
 
 ### 10. Optional: run the web dashboard
 
