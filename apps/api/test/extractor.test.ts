@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { evalCases, fixtureScorecards } from '@repsignal/evals';
+import { computeTalkListenRatio } from '@repsignal/schema';
 import {
   ExtractionError,
   extractScorecard,
@@ -8,6 +9,7 @@ import {
 import type { ContentBlock, ModelCaller } from '../src/coaching/modelCaller.js';
 
 const samplePayload = evalCases[0].payload;
+// LLM-shaped fixture: judgment fields only, no talkListenRatio.
 const sampleScorecard = fixtureScorecards['call-0001'];
 
 describe('findToolUseBlock', () => {
@@ -48,6 +50,19 @@ describe('extractScorecard', () => {
     expect(result.discoveryQuestionsAsked.count).toBeGreaterThan(0);
   });
 
+  it('computes talkListenRatio in code, not from the model output', async () => {
+    // The model output (fixture) contains no talkListenRatio at all.
+    expect('talkListenRatio' in sampleScorecard).toBe(false);
+    const caller: ModelCaller = async () => [
+      { type: 'tool_use', name: 'record_scorecard', input: sampleScorecard },
+    ];
+    const result = await extractScorecard(samplePayload, caller);
+    // The served ratio equals the deterministic function over the transcript.
+    expect(result.talkListenRatio).toBe(
+      computeTalkListenRatio(samplePayload.transcript),
+    );
+  });
+
   it('throws ExtractionError when no tool_use block is returned', async () => {
     const caller: ModelCaller = async () => [{ type: 'text', text: 'sorry, cannot help' }];
     await expect(extractScorecard(samplePayload, caller)).rejects.toBeInstanceOf(
@@ -57,7 +72,16 @@ describe('extractScorecard', () => {
 
   it('throws ExtractionError when the tool output fails schema validation', async () => {
     const caller: ModelCaller = async () => [
-      { type: 'tool_use', name: 'record_scorecard', input: { talkListenRatio: 5 } },
+      { type: 'tool_use', name: 'record_scorecard', input: { discoveryQuestionsAsked: { count: -1, examples: [] } } },
+    ];
+    await expect(extractScorecard(samplePayload, caller)).rejects.toBeInstanceOf(
+      ExtractionError,
+    );
+  });
+
+  it('rejects tool output that includes talkListenRatio (not in the model schema)', async () => {
+    const caller: ModelCaller = async () => [
+      { type: 'tool_use', name: 'record_scorecard', input: { ...sampleScorecard, talkListenRatio: 0.5 } },
     ];
     await expect(extractScorecard(samplePayload, caller)).rejects.toBeInstanceOf(
       ExtractionError,

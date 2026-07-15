@@ -1,4 +1,4 @@
-import { Scorecard } from '@repsignal/schema';
+import { LlmScorecard } from '@repsignal/schema';
 import type { TranscriptPayload } from '@repsignal/schema';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
@@ -6,12 +6,15 @@ import { zodToJsonSchema } from 'zod-to-json-schema';
  * The scorecard tool definition and the prompt builder.
  *
  * The JSON schema handed to the model is derived directly from the Zod
- * Scorecard schema, so the model is constrained by exactly the same contract
- * that Zod re-validates against. One source of truth, two enforcement points.
+ * LlmScorecard schema, so the model is constrained by exactly the same contract
+ * that Zod re-validates the model output against. talkListenRatio is NOT part
+ * of this schema: it is a computable metric, so it is computed in code from the
+ * transcript rather than asked of the model. One source of truth, two
+ * enforcement points.
  */
 
 function buildScorecardJsonSchema(): Record<string, unknown> {
-  const schema = zodToJsonSchema(Scorecard, { $refStrategy: 'none' }) as Record<
+  const schema = zodToJsonSchema(LlmScorecard, { $refStrategy: 'none' }) as Record<
     string,
     unknown
   >;
@@ -30,8 +33,8 @@ export const SCORECARD_TOOL = {
 export const SYSTEM_PROMPT = [
   'You are a sales-coaching analyst. You are given the transcript of a single sales call between a rep and a prospect.',
   'Analyze it and record a coaching scorecard by calling the record_scorecard tool exactly once.',
+  'The talk/listen ratio is computed separately in code from the transcript, so do not report it. Focus only on the judgment fields below.',
   'Definitions:',
-  '- talkListenRatio: the fraction of spoken words attributable to the rep, as a number between 0 and 1. Higher means the rep dominated the conversation.',
   '- discoveryQuestionsAsked: how many genuine open-ended discovery questions the rep asked, plus a few verbatim examples.',
   '- objections: prospect concerns or pushback, each with a short quote, a category, and whether the rep handled it.',
   '- nextStepSecured: whether a concrete next step (a booked meeting, an intro, a scheduled evaluation) was secured, with a quote as evidence when true and null otherwise.',

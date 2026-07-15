@@ -11,5 +11,8 @@ export {
   DiscoveryQuestions,
   NextStep,
   Scorecard,
+  LlmScorecard,
   ScorecardRecord,
 } from './scorecard.js';
+
+export { computeTalkListenRatio, countWords } from './talkListenRatio.js';

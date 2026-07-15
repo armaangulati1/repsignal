@@ -34,7 +34,12 @@ export type NextStep = z.infer<typeof NextStep>;
 
 export const Scorecard = z
   .object({
-    /** Fraction of words spoken by the rep, 0..1. Higher means the rep talked more. */
+    /**
+     * Fraction of words spoken by the rep, 0..1. Higher means the rep talked
+     * more. This field is COMPUTED deterministically from the transcript (see
+     * computeTalkListenRatio), not produced by the model. It stays on the
+     * scorecard and in the API response; it is just populated in code.
+     */
     talkListenRatio: z.number().min(0).max(1),
     discoveryQuestionsAsked: DiscoveryQuestions,
     objections: z.array(Objection),
@@ -44,6 +49,19 @@ export const Scorecard = z
   })
   .strict();
 export type Scorecard = z.infer<typeof Scorecard>;
+
+/**
+ * The subset of the scorecard the LLM is actually asked to produce.
+ *
+ * talkListenRatio is omitted here on purpose: it is a computable metric, so we
+ * do not let the model guess it. The tool schema handed to the model is derived
+ * from THIS shape, and the model output is validated against it. The API then
+ * computes talkListenRatio in code and merges it back to form a full Scorecard.
+ * Because this is a strict schema, a model that emits talkListenRatio anyway is
+ * rejected rather than silently trusted.
+ */
+export const LlmScorecard = Scorecard.omit({ talkListenRatio: true });
+export type LlmScorecard = z.infer<typeof LlmScorecard>;
 
 /** The full stored/returned record: the scorecard plus identifying metadata. */
 export const ScorecardRecord = z

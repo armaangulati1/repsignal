@@ -1,4 +1,4 @@
-import type { Scorecard, TranscriptPayload } from '@repsignal/schema';
+import { computeTalkListenRatio, type Scorecard, type TranscriptPayload } from '@repsignal/schema';
 
 /**
  * Self-authored synthetic eval set.
@@ -8,6 +8,14 @@ import type { Scorecard, TranscriptPayload } from '@repsignal/schema';
  * case ships with a hand-labeled golden scorecard used by the eval harness.
  * These labels encode the author's judgment of the "right answer" and are what
  * a live model run is scored against.
+ *
+ * One field is NOT a matter of judgment: talkListenRatio. The literal value on
+ * each golden below is the author's rough intuition, but the operative golden
+ * value is recomputed from the transcript with computeTalkListenRatio (see the
+ * derivation at the bottom of this file), the exact function the API uses to
+ * populate the served scorecard. So golden and served ratios are identical by
+ * construction, and the ratio is not part of the model-vs-golden agreement
+ * measurement.
  */
 
 export interface EvalCase {
@@ -17,7 +25,7 @@ export interface EvalCase {
   golden: Scorecard;
 }
 
-export const evalCases: EvalCase[] = [
+const rawEvalCases: EvalCase[] = [
   {
     id: 'strong-discovery-clean-close',
     scenario: 'Strong discovery, clear next step secured',
@@ -574,5 +582,18 @@ export const evalCases: EvalCase[] = [
     },
   },
 ];
+
+/**
+ * Normalize each golden's talkListenRatio to the deterministic, code-computed
+ * value so the golden is defined by the same formula the API serves. This makes
+ * the ratio exact by construction and keeps it out of the LLM-judged score.
+ */
+export const evalCases: EvalCase[] = rawEvalCases.map((c) => ({
+  ...c,
+  golden: {
+    ...c.golden,
+    talkListenRatio: computeTalkListenRatio(c.payload.transcript),
+  },
+}));
 
 export const evalCaseCount = evalCases.length;

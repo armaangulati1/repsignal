@@ -5,7 +5,9 @@ import type { Scorecard, TranscriptPayload } from '@repsignal/schema';
 import { createApp, type ExtractFn } from '../src/app.js';
 import { createInMemoryStore } from '../src/store.js';
 
-const stubScorecard = fixtureScorecards['call-0001'];
+// The fixture is LLM-shaped (no talkListenRatio). The real extractor merges the
+// deterministic ratio before returning; the stub mirrors that with a fixed value.
+const stubScorecard: Scorecard = { ...fixtureScorecards['call-0001'], talkListenRatio: 0.5 };
 
 function buildTestApp(extract?: ExtractFn) {
   const store = createInMemoryStore();

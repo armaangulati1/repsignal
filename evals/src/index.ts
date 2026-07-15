@@ -11,9 +11,10 @@ export {
 
 export {
   scoreScorecard,
+  scoreDeterministicFields,
   aggregateScores,
-  RATIO_TOLERANCE,
   COUNT_TOLERANCE,
+  LLM_JUDGED_FIELDS_PER_TRANSCRIPT,
   type FieldCheck,
   type TranscriptScore,
   type AggregateScore,

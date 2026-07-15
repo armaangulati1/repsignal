@@ -1,4 +1,4 @@
-import { Scorecard } from '@repsignal/schema';
+import { LlmScorecard, Scorecard, computeTalkListenRatio } from '@repsignal/schema';
 import type { TranscriptPayload } from '@repsignal/schema';
 import { buildPrompts, SCORECARD_TOOL } from './prompt.js';
 import type { ContentBlock, ModelCaller } from './modelCaller.js';
@@ -60,7 +60,9 @@ export async function extractScorecard(
     );
   }
 
-  const parsed = Scorecard.safeParse(toolBlock.input);
+  // The model only produces the judgment fields. talkListenRatio is omitted
+  // from the tool schema, so a compliant response must not include it.
+  const parsed = LlmScorecard.safeParse(toolBlock.input);
   if (!parsed.success) {
     throw new ExtractionError(
       'model tool output failed scorecard schema validation',
@@ -68,5 +70,20 @@ export async function extractScorecard(
     );
   }
 
-  return parsed.data;
+  // Compute the talk/listen ratio deterministically in code and merge it in,
+  // then re-validate the assembled scorecard as a final gate before serving.
+  const scorecard: Scorecard = {
+    ...parsed.data,
+    talkListenRatio: computeTalkListenRatio(payload.transcript),
+  };
+
+  const validated = Scorecard.safeParse(scorecard);
+  if (!validated.success) {
+    throw new ExtractionError(
+      'assembled scorecard failed schema validation',
+      validated.error.flatten(),
+    );
+  }
+
+  return validated.data;
 }

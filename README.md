@@ -73,6 +73,25 @@ The LLM boundary is isolated behind a small `ModelCaller` seam. The real
 implementation wraps the Anthropic SDK; the tests inject a deterministic fake.
 This is what keeps `npm test` and CI fully offline with no API key.
 
+**The LLM only judges what genuinely needs judgment.** The talk/listen ratio is
+a computable property of the transcript, not a matter of interpretation, so it
+is not asked of the model at all. It is computed deterministically in code by a
+single pure function (`computeTalkListenRatio` in `packages/schema`), used by
+both the API and the eval harness. Concretely: `talkListenRatio` is omitted from
+the tool schema handed to the model (which is derived from a dedicated
+`LlmScorecard` shape), the model returns only the judgment fields, and the API
+computes the ratio from the transcript and merges it before the final Zod
+validation. The field still exists on the scorecard and in the API response; it
+is just populated by code instead of by a model guess. This removes a whole
+class of avoidable error (the model approximating a number it should count) and
+leaves the model to do only what it is actually good at: reading intent,
+objections, and next steps.
+
+The ratio formula is fixed and documented: rep word count divided by total word
+count across all rep and prospect utterances, rounded to two decimals, in
+`[0, 1]`, with degenerate transcripts (empty, or whitespace-only text) yielding
+`0`.
+
 Two `claude-sonnet-5` specifics are handled explicitly:
 
 - No `temperature` parameter is sent (a known breakage on this model).
@@ -83,7 +102,7 @@ Two `claude-sonnet-5` specifics are handled explicitly:
 ### The scorecard
 
 ```
-talkListenRatio          number 0..1 (fraction of words spoken by the rep)
+talkListenRatio          number 0..1 (fraction of words spoken by the rep; computed in code)
 discoveryQuestionsAsked   { count, examples[] }
 objections               [ { quote, category, handled } ]
 nextStepSecured          { secured, evidence | null }
@@ -104,24 +123,39 @@ low-engagement ghosting risk, and a technical deep dive. Each ships with a
 hand-labeled golden scorecard.
 
 The harness runs each transcript through the extractor and scores the predicted
-scorecard against its golden label using a fixed set of **6 binary field checks
-per transcript** (14 transcripts x 6 = **84 field checks** total):
+scorecard against its golden label. Scoring is split into two kinds of field.
+
+**LLM-judged fields (5 per transcript, 14 transcripts x 5 = 70 field checks
+total).** These are genuine judgment calls, and they are what the model-vs-golden
+agreement number measures:
 
 | Field check | Rule |
 | --- | --- |
-| `talkListenRatio` | within +/- 0.10 of golden |
 | `discoveryQuestionsAsked.count` | within +/- 1 of golden |
 | `nextStepSecured.secured` | exact boolean match |
 | `objections.count` | within +/- 1 of golden |
 | `riskFlags.presence` | golden and prediction agree on whether any flag exists |
 | `coachingTips.nonEmpty` | prediction returns at least one tip |
 
+**Deterministic field (1 per transcript, reported separately).**
+
+| Field | Handling |
+| --- | --- |
+| `talkListenRatio` | computed in code from the transcript by the same function that builds the golden value; **exact by construction** (14/14), never counted in the LLM-judged denominator |
+
+`talkListenRatio` used to be an LLM-judged check with a +/- 0.10 tolerance. It is
+now computed deterministically (see the architecture note), so scoring the model
+against a value it never produces would only inflate the number. It is therefore
+excluded from the LLM-judged denominator and reported on its own line as
+deterministic and exact by construction. That is why the LLM-judged denominator
+is **70**, not 84.
+
 ### Framing rule (mandatory)
 
 Any agreement number from this eval **never travels bare**. It is always written
 as:
 
-> **N/84 field checks on its self-authored synthetic 14-transcript eval set.**
+> **N/70 LLM-judged field checks on its self-authored synthetic 14-transcript eval set.**
 
 All transcripts are synthetic and self-authored, and all labels are self-scored.
 This is a measure of agreement with one author's judgment on invented calls, not
@@ -130,9 +164,10 @@ a claim about real-world accuracy.
 ### Where the live number comes from
 
 The test suite and CI run **offline** against fixtured model responses (the
-fixtures carry two deliberate deviations, so the offline harness asserts a known
-**82/84** to prove the scoring logic detects disagreement rather than trivially
-passing). The offline number is a harness sanity check, **not** a model
+fixtures carry one deliberate deviation, an objection under-count on call-0003,
+so the offline harness asserts a known **69/70** LLM-judged plus **14/14**
+deterministic to prove the scoring logic detects disagreement rather than
+trivially passing). The offline number is a harness sanity check, **not** a model
 measurement.
 
 The real model-vs-golden number is produced by running the live eval with a real
@@ -140,26 +175,29 @@ API key (see the RUNBOOK).
 
 ### Live eval result
 
-A representative live run scored **77/84 field checks on its self-authored
-synthetic 14-transcript eval set** (9 of the 14 transcripts scored 6/6; the other
-5 were partial).
+> **Live LLM-judged number: to be re-established.** The eval structure changed
+> (`talkListenRatio` moved out of the LLM-judged set, so the denominator dropped
+> from 84 to **70**). The previous figure was measured against the old 84-check
+> structure and no longer applies. The new number comes from a fresh live re-run
+> (`npm run eval`, see the RUNBOOK) and will be written here as
+> **N/70 LLM-judged field checks on its self-authored synthetic 14-transcript
+> eval set**, alongside the deterministic **14/14** `talkListenRatio` line.
 
-Honest caveats:
+Honest caveats (these hold regardless of the exact number):
 
-- The LLM produces different outputs run to run, so **77/84 is representative, not
-  a fixed number**. A re-run may land a point or two either way.
+- The LLM produces different outputs run to run, so any live LLM-judged number is
+  **representative, not a fixed number**. A re-run may land a point or two either
+  way.
 - All 14 transcripts are synthetic and self-authored, all golden labels are
   self-scored, and this is not a real integration. The number measures agreement
   with one author's judgment on invented calls, not real-world accuracy.
-- Two recurring miss types account for most of the gap, and both are known
-  limitations rather than scored-away edge cases:
-  1. **`talkListenRatio` estimation.** On a few calls the model's estimated
-     talk/listen ratio landed just outside the +/- 0.10 tolerance. The model
-     approximates the ratio from the transcript rather than counting words
-     exactly.
-  2. **Conservative risk over-flagging.** On a few calls the model raised a
-     `riskFlags` entry where the golden label had none. It errs toward flagging
-     risk, which trips the `riskFlags.presence` agreement check.
+- `talkListenRatio` is no longer a source of LLM misses at all: it is computed in
+  code, so it is exact by construction and reported separately. The formerly
+  recurring "ratio landed just outside the tolerance" miss type is gone by design.
+- The main remaining LLM miss type is **conservative risk over-flagging**: on a
+  few calls the model raises a `riskFlags` entry where the golden label had none.
+  It errs toward flagging risk, which trips the `riskFlags.presence` agreement
+  check.
 
 The golden labels were **not** adjusted to inflate the score. The framing rule
 above still holds: the number never appears bare, always with the
@@ -228,7 +266,7 @@ Expected: no output and exit code 0.
 npm test
 ```
 
-Expected: Vitest prints `Test Files 5 passed` and `Tests 35 passed`.
+Expected: Vitest prints `Test Files 6 passed` and `Tests 47 passed`.
 
 ### 5. Add your API key (only needed for the live steps below)
 
@@ -269,8 +307,13 @@ Expected: a JSON scorecard record with an `id` and a `scorecard` object.
 npm run eval
 ```
 
-Expected: a per-transcript report ending with a line of the form
-`N/84 field checks across its self-authored synthetic 14-transcript eval set.`
+Expected: a per-transcript report ending with two summary lines of the form
+`N/70 LLM-judged field checks (5 per transcript) across its self-authored synthetic 14-transcript eval set.`
+followed by
+`talkListenRatio: 14/14 deterministic, exact by construction (computed in code from the transcript, not judged by the model).`
+
+Record the `N/70` number here in the README (Live eval result) once the re-run
+prints it.
 
 ### 10. Optional: run the web dashboard
 
