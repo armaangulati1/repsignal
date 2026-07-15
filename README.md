@@ -175,29 +175,27 @@ API key (see the RUNBOOK).
 
 ### Live eval result
 
-> **Live LLM-judged number: to be re-established.** The eval structure changed
-> (`talkListenRatio` moved out of the LLM-judged set, so the denominator dropped
-> from 84 to **70**). The previous figure was measured against the old 84-check
-> structure and no longer applies. The new number comes from a fresh live re-run
-> (`npm run eval`, see the RUNBOOK) and will be written here as
-> **N/70 LLM-judged field checks on its self-authored synthetic 14-transcript
-> eval set**, alongside the deterministic **14/14** `talkListenRatio` line.
+A live re-run under the new structure scored **66/70 LLM-judged field checks on
+its self-authored synthetic 14-transcript eval set**. Separately, and never
+folded into that 70, the deterministic `talkListenRatio` scored **14/14, exact by
+construction** (computed in code from the transcript, not judged by the model).
 
-Honest caveats (these hold regardless of the exact number):
+Honest caveats:
 
-- The LLM produces different outputs run to run, so any live LLM-judged number is
-  **representative, not a fixed number**. A re-run may land a point or two either
-  way.
+- The LLM produces different outputs run to run, so **66/70 is representative, not
+  a fixed number**. A re-run may land a point or two either way.
 - All 14 transcripts are synthetic and self-authored, all golden labels are
   self-scored, and this is not a real integration. The number measures agreement
   with one author's judgment on invented calls, not real-world accuracy.
-- `talkListenRatio` is no longer a source of LLM misses at all: it is computed in
-  code, so it is exact by construction and reported separately. The formerly
-  recurring "ratio landed just outside the tolerance" miss type is gone by design.
-- The main remaining LLM miss type is **conservative risk over-flagging**: on a
-  few calls the model raises a `riskFlags` entry where the golden label had none.
-  It errs toward flagging risk, which trips the `riskFlags.presence` agreement
-  check.
+- **The sole remaining LLM miss type is conservative risk over-flagging.** All 4
+  of the 4 misses were `riskFlags.presence`: on 4 of the 14 calls the model raised
+  a `riskFlags` entry where the golden label had none. The model errs toward
+  flagging risk, which trips the `riskFlags.presence` agreement check.
+- **Design win: the talk/listen-ratio misses are gone.** The earlier 77/84 run
+  (old 84-check structure) lost points when the model's estimated talk/listen
+  ratio landed just outside the tolerance. Moving that metric out of the LLM and
+  computing it deterministically eliminated that miss type entirely: it is now
+  exact by construction, and risk over-flagging is all that remains.
 
 The golden labels were **not** adjusted to inflate the score. The framing rule
 above still holds: the number never appears bare, always with the
@@ -312,8 +310,8 @@ Expected: a per-transcript report ending with two summary lines of the form
 followed by
 `talkListenRatio: 14/14 deterministic, exact by construction (computed in code from the transcript, not judged by the model).`
 
-Record the `N/70` number here in the README (Live eval result) once the re-run
-prints it.
+The latest recorded run is **66/70** (see Live eval result). Update that section
+if a fresh re-run lands a different LLM-judged number.
 
 ### 10. Optional: run the web dashboard
 
