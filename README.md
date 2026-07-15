@@ -212,7 +212,7 @@ Expected: npm finishes with an "added ... packages" summary and no errors.
 npm run typecheck
 ```
 
-Expected: turbo prints `3 successful, 3 total` and exits 0.
+Expected: turbo prints `4 successful, 4 total` and exits 0.
 
 ### 3. Lint
 
