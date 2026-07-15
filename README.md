@@ -14,6 +14,15 @@ result against a strict schema before trusting it.
 > a portfolio project, not a real product. It is not connected to any real call
 > source, CRM, or customer data, and it does not operate at production scale.
 
+**Live demo (static, demo mode):** https://armaangulati1.github.io/repsignal/
+
+The live demo is a purely static page. It renders a real sample from this
+repository's own synthetic, self-authored eval set (the transcript and its
+golden scorecard), with the talk/listen ratio computed in code. It does **not**
+call any API, does not use an API key, and does not send any data anywhere. To
+run live scoring against Claude, clone the repo and run it locally against the
+API (see the RUNBOOK).
+
 ---
 
 ## What it does in 60 seconds
