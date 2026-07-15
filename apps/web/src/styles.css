@@ -51,6 +51,21 @@ body {
   color: var(--muted);
 }
 
+.demo-banner {
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: rgba(79, 140, 255, 0.12);
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.demo-banner strong {
+  color: var(--accent);
+}
+
 .layout {
   display: grid;
   grid-template-columns: 1fr 1fr;

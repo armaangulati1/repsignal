@@ -3,18 +3,28 @@ import type { ScorecardRecord } from '@repsignal/schema';
 import { scoreTranscript } from './api.js';
 import { buildPayload, SAMPLE_TRANSCRIPT } from './transcript.js';
 import { ScorecardView } from './ScorecardView.js';
+import { DEMO_MODE, DEMO_RECORD, DEMO_TRANSCRIPT, DEMO_REP_NAME, DEMO_PROSPECT_NAME } from './demo.js';
 
 type Status = 'idle' | 'loading' | 'error' | 'done';
 
 export function App() {
-  const [repName, setRepName] = useState('Dana');
-  const [prospectName, setProspectName] = useState('Priya');
-  const [raw, setRaw] = useState(SAMPLE_TRANSCRIPT);
-  const [status, setStatus] = useState<Status>('idle');
+  const [repName, setRepName] = useState(DEMO_MODE ? DEMO_REP_NAME : 'Dana');
+  const [prospectName, setProspectName] = useState(DEMO_MODE ? DEMO_PROSPECT_NAME : 'Priya');
+  const [raw, setRaw] = useState(DEMO_MODE ? DEMO_TRANSCRIPT : SAMPLE_TRANSCRIPT);
+  const [status, setStatus] = useState<Status>(DEMO_MODE ? 'done' : 'idle');
   const [error, setError] = useState('');
-  const [record, setRecord] = useState<ScorecardRecord | null>(null);
+  const [record, setRecord] = useState<ScorecardRecord | null>(DEMO_MODE ? DEMO_RECORD : null);
 
   async function handleScore() {
+    // In demo mode the app never touches the network. It re-displays the real
+    // self-authored sample scorecard from the eval set instead of calling any API.
+    if (DEMO_MODE) {
+      setRecord(DEMO_RECORD);
+      setStatus('done');
+      setError('');
+      return;
+    }
+
     const payload = buildPayload({ raw, repName, prospectName });
     if (!payload) {
       setStatus('error');
@@ -47,6 +57,15 @@ export function App() {
         </p>
       </header>
 
+      {DEMO_MODE && (
+        <div className="demo-banner" role="note">
+          <strong>Demo mode:</strong> a sample synthetic, self-authored transcript and scorecard
+          from this project&rsquo;s own eval set. This hosted page does not call any API or use real
+          data. The talk/listen ratio is computed in code; the other fields are the self-authored
+          reference scorecard. Run it locally against the API for live scoring (see the README).
+        </div>
+      )}
+
       <main className="layout">
         <section className="panel">
           <div className="field-row">
@@ -72,9 +91,16 @@ export function App() {
 
           <div className="actions">
             <button className="primary" onClick={handleScore} disabled={status === 'loading'}>
-              {status === 'loading' ? 'Scoring...' : 'Score this call'}
+              {status === 'loading'
+                ? 'Scoring...'
+                : DEMO_MODE
+                  ? 'Show sample scorecard'
+                  : 'Score this call'}
             </button>
-            <button className="ghost" onClick={() => setRaw(SAMPLE_TRANSCRIPT)}>
+            <button
+              className="ghost"
+              onClick={() => setRaw(DEMO_MODE ? DEMO_TRANSCRIPT : SAMPLE_TRANSCRIPT)}
+            >
               Load sample
             </button>
           </div>
@@ -89,8 +115,9 @@ export function App() {
             <div className="empty">
               <p>The scorecard will appear here after you score a call.</p>
               <p className="muted">
-                The API runs the transcript through Claude and validates the result against a Zod
-                schema before returning it.
+                {DEMO_MODE
+                  ? 'This hosted page renders a saved sample scorecard and makes no network calls. Click "Show sample scorecard" to display it.'
+                  : 'The API runs the transcript through Claude and validates the result against a Zod schema before returning it.'}
               </p>
             </div>
           )}
