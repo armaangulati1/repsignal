@@ -1,0 +1,34 @@
+{
+  "name": "repsignal",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "npm@11.13.0",
+  "description": "Webhook-driven conversation-intelligence integration: sales-call transcripts to schema-validated coaching scorecards.",
+  "workspaces": [
+    "packages/*",
+    "apps/*",
+    "evals"
+  ],
+  "scripts": {
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "build": "turbo run build",
+    "lint": "eslint .",
+    "dev:api": "npm --workspace @repsignal/api run dev",
+    "dev:web": "npm --workspace @repsignal/web run dev",
+    "eval": "npm --workspace @repsignal/api run eval"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.13.0",
+    "@types/node": "^22.7.5",
+    "eslint": "^9.13.0",
+    "turbo": "^2.2.3",
+    "typescript": "^5.6.3",
+    "typescript-eslint": "^8.10.0",
+    "vitest": "^2.1.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
